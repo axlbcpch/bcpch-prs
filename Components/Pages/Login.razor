@@ -1,0 +1,291 @@
+@page "/admin/login"
+@rendermode InteractiveServer
+
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="login-shell">
+
+    @if (isLoading)
+    {
+        <div class="login-overlay">
+            <div class="spinner"></div>
+        </div>
+    }
+
+    <div class="login-card">
+
+        <!-- HEADER -->
+        <div class="login-header">
+
+            <div class="login-logo">
+                <svg width="30"
+                     height="30"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="white"
+                     stroke-width="2"
+                     stroke-linecap="round"
+                     stroke-linejoin="round">
+
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+            </div>
+
+            <h1>Admin Portal</h1>
+
+            <p>
+                BCPCH Participant Registration System
+            </p>
+
+        </div>
+
+        <!-- BODY -->
+        <div class="login-body">
+
+            @if (!string.IsNullOrWhiteSpace(error))
+            {
+                <div class="login-error">
+
+                    <svg width="16"
+                         height="16"
+                         viewBox="0 0 24 24"
+                         fill="none"
+                         stroke="currentColor"
+                         stroke-width="2">
+
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+
+                    </svg>
+
+                    <span>@error</span>
+
+                </div>
+            }
+
+            <fieldset disabled="@isLoading">
+
+                <EditForm Model="loginModel"
+                          OnValidSubmit="LoginUser">
+                    <DataAnnotationsValidator />
+
+                    <!-- USERNAME -->
+                    <div class="login-field">
+
+                        <label>Username</label>
+
+                        <div class="input-icon-wrap">
+
+                            <svg class="field-icon"
+                                 width="16"
+                                 height="16"
+                                 viewBox="0 0 24 24"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 stroke-width="2">
+
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+
+                            </svg>
+
+                            <InputText @bind-Value="loginModel.Username"
+                                       class="login-input"
+                                       placeholder="Enter username"
+                                       autocomplete="username" />
+
+                        </div>
+
+                        <ValidationMessage For="@(() => loginModel.Username)" />
+
+                    </div>
+
+                    <!-- PASSWORD -->
+                    <div class="login-field">
+
+                        <label>Password</label>
+
+                        <div class="input-icon-wrap">
+
+                            <svg class="field-icon"
+                                 width="16"
+                                 height="16"
+                                 viewBox="0 0 24 24"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 stroke-width="2">
+
+                                <rect x="3"
+                                      y="11"
+                                      width="18"
+                                      height="11"
+                                      rx="2"
+                                      ry="2" />
+
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+
+                            </svg>
+
+                            <InputText @bind-Value="loginModel.Password"
+                                       class="login-input"
+                                       type="@(showPassword ? "text" : "password")"
+                                       placeholder="Enter password"
+                                       autocomplete="current-password" />
+
+                            <button type="button"
+                                    class="toggle-pw"
+                                    tabindex="-1"
+                                    @onclick="TogglePassword">
+
+                                @if (showPassword)
+                                {
+                                    <svg width="15"
+                                         height="15"
+                                         viewBox="0 0 24 24"
+                                         fill="none"
+                                         stroke="currentColor"
+                                         stroke-width="2">
+
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                                        <line x1="1" y1="1" x2="23" y2="23" />
+
+                                    </svg>
+                                }
+                                else
+                                {
+                                    <svg width="15"
+                                         height="15"
+                                         viewBox="0 0 24 24"
+                                         fill="none"
+                                         stroke="currentColor"
+                                         stroke-width="2">
+
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                        <circle cx="12" cy="12" r="3" />
+
+                                    </svg>
+                                }
+
+                            </button>
+
+                        </div>
+
+                        <ValidationMessage For="@(() => loginModel.Password)" />
+
+                    </div>
+
+                    <!-- BUTTON -->
+                    <button type="submit"
+                            class="login-btn"
+                            disabled="@isLoading">
+
+                        @if (isLoading)
+                        {
+                            <span>Signing In...</span>
+                        }
+                        else
+                        {
+                            <span>Sign In</span>
+                        }
+
+                    </button>
+
+                </EditForm>
+
+            </fieldset>
+
+        </div>
+
+        <!-- FOOTER -->
+        <div class="login-footer">
+
+            <a href="/" class="back-link">
+
+                <svg width="14"
+                     height="14"
+                     viewBox="0 0 24 24"
+                     fill="none"
+                     stroke="currentColor"
+                     stroke-width="2">
+
+                    <line x1="19" y1="12" x2="5" y2="12" />
+                    <polyline points="12 19 5 12 12 5" />
+
+                </svg>
+
+                <span>Back to Registration</span>
+
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+@code {
+
+    private LoginModel loginModel = new();
+
+    private string? error;
+
+    private bool isLoading;
+
+    private bool showPassword;
+
+    protected override void OnInitialized()
+    {
+        // if already authenticated
+        // Nav.NavigateTo("/home");
+    }
+
+    private void TogglePassword()
+    {
+        showPassword = !showPassword;
+    }
+
+    private async Task LoginUser()
+    {
+        error = null;
+
+        isLoading = true;
+
+        try
+        {
+            var ok = await JS.InvokeAsync<bool>("loginRequest", loginModel.Username, loginModel.Password);
+
+            if (ok)
+            {
+                Nav.NavigateTo("/admin/dashboard", true);
+            }
+            else
+            {
+                error = "Invalid username or password.";
+            }
+        }
+        catch
+        {
+            error = "Unable to connect to the server.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    public class LoginModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(
+            ErrorMessage = "Username is required."
+        )]
+        public string Username { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(
+            ErrorMessage = "Password is required."
+        )]
+        public string Password { get; set; } = string.Empty;
+    }
+}

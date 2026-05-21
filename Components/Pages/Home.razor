@@ -1,0 +1,424 @@
+@page "/"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using PRS.Models
+@using PRS.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject IJSRuntime JS
+
+<div class="page-shell">
+
+    <!-- Top navigation bar -->
+    <nav class="top-nav">
+        <div class="nav-brand">
+            <div class="nav-logo">P</div>
+            <div>
+                <div class="nav-title">BCPCH</div>
+                <div class="nav-subtitle">Participant Registration System</div>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+            @if (selectedActivity != null)
+            {
+                <div class="selected-event-badge">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    @selectedActivity.Name
+                    <button class="change-event-btn" @onclick="ChangeActivity" title="Change activity">
+                        Change
+                    </button>
+                </div>
+            }
+            <button class="theme-toggle" @onclick="ToggleTheme" title="Toggle theme">
+                @if (isDark)
+                {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"/>
+                        <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                    <span>Light Mode</span>
+                }
+                else
+                {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                    <span>Dark Mode</span>
+                }
+            </button>
+        </div>
+    </nav>
+
+    <main class="page-content">
+
+        <!-- ----------------------------------
+             VIEW 1: ACTIVITY SELECTION
+             Shown only on initial load
+             ---------------------------------- -->
+        @if (selectedActivity == null)
+        {
+            <div class="reg-card" style="animation: cardIn 0.4s ease both;">
+                <div class="card-header">
+                    <div class="header-badge"><span></span>Select Activity</div>
+                    <h1>Choose an Activity</h1>
+                    <p>Select the activity you are registering participants for. You only need to do this once per session.</p>
+                </div>
+
+                <div class="card-body">
+                    @if (activities.Count == 0)
+                    {
+                        <div class="no-activity-notice">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                            No active activities available at the moment. Please check back later or contact the administrator.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="activity-grid">
+                            @foreach (var activity in activities)
+                            {
+                                var days = activity.EndDate.DayNumber - activity.StartDate.DayNumber + 1;
+                                <div class="activity-card" @onclick="() => SelectActivity(activity)">
+                                    <div class="activity-card-top">
+                                        <div class="activity-card-name">@activity.Name</div>
+                                        <div class="activity-arrow">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="5" y1="12" x2="19" y2="12"/>
+                                                <polyline points="12 5 19 12 12 19"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="activity-card-meta">
+                                        <span>
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                                <line x1="3" y1="10" x2="21" y2="10"/>
+                                            </svg>
+                                            @activity.StartDate.ToString("MMM dd") – @activity.EndDate.ToString("MMM dd, yyyy")
+                                        </span>
+                                        <span>
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                                <circle cx="12" cy="10" r="3"/>
+                                            </svg>
+                                            @activity.Location
+                                        </span>
+                                        <span>@days day@(days != 1 ? "s" : "")</span>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(activity.Description))
+                                    {
+                                        <div class="activity-card-desc">
+                                            @(activity.Description.Length > 90
+                                                ? activity.Description[..90] + "…"
+                                                : activity.Description)
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="card-footer">
+                    <span>BCPCH · Participant Registration System</span>
+                    <span class="footer-badge">Secure Form</span>
+                </div>
+            </div>
+        }
+
+        <!-- ----------------------------------
+             VIEW 2: REGISTRATION FORM
+             Shown after activity is selected
+             ---------------------------------- -->
+        @if(isReady && selectedActivity != null)
+        {
+            <div class="reg-card" style="animation: cardIn 0.35s ease both;">
+
+                <div class="card-header">
+                    <div class="header-badge"><span></span>Registration Open</div>
+                    <h1>Participant Registration</h1>
+                    @if (selectedActivity != null)
+                    {
+                        <p>Registering for <strong style="color:rgba(255,255,255,0.95)">@selectedActivity.Name</strong> · @selectedActivity.StartDate.ToString("MMM dd") – @selectedActivity.EndDate.ToString("MMM dd, yyyy")</p>
+                    }
+                    </div>
+
+                <div class="card-body">
+
+                    @if (successMessage is not null)
+                    {
+                        <div class="alert alert-success">? @successMessage</div>
+                    }
+
+                    @if (signatureError)
+                    {
+                        <div class="alert alert-danger">? Please provide your signature before submitting.</div>
+                    }
+
+                    <EditForm Model="model" OnValidSubmit="HandleSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="validation-summary-errors" />
+
+                        <!-- Personal Information -->
+                        <div class="form-section">
+                            <div class="section-label">Personal Information</div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>First Name <span class="req">*</span></label>
+                                    <InputText @bind-Value="model.FirstName" class="form-control" placeholder="Juan" />
+                                    <ValidationMessage For="() => model.FirstName" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Last Name <span class="req">*</span></label>
+                                    <InputText @bind-Value="model.LastName" class="form-control" placeholder="Dela Cruz" />
+                                    <ValidationMessage For="() => model.LastName" />
+                                </div>
+                            </div>
+                            <div class="form-row" style="margin-top:1rem">
+                                <div class="form-group">
+                                    <label>Birthday <span class="req">*</span></label>
+                                    <InputDate @bind-Value="model.Birthday" class="form-control" />
+                                    <ValidationMessage For="() => model.Birthday" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Gender <span class="req">*</span></label>
+                                    <InputSelect @bind-Value="model.Gender" class="form-control">
+                                        <option value="">— Select gender —</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                        <option value="Prefer not to say">Prefer not to say</option>
+                                    </InputSelect>
+                                    <ValidationMessage For="() => model.Gender" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-divider"></div>
+
+                        <!-- Contact Information -->
+                        <div class="form-section">
+                            <div class="section-label">Contact Information</div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Contact Number <span class="req">*</span></label>
+                                    <InputText @bind-Value="model.ContactNo" class="form-control" placeholder="+63 912 345 6789" />
+                                    <ValidationMessage For="() => model.ContactNo" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Email Address <span class="req">*</span></label>
+                                    <InputText @bind-Value="model.Email" class="form-control" placeholder="juan@email.com" />
+                                    <ValidationMessage For="() => model.Email" />
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top:1rem">
+                                <label>Address <span class="req">*</span></label>
+                                <InputText @bind-Value="model.Address" class="form-control" placeholder="Street, Barangay, Municipality, Province" />
+                                <ValidationMessage For="() => model.Address" />
+                            </div>
+                        </div>
+
+                        <div class="form-divider"></div>
+
+                        <!-- Signature -->
+                        <div class="form-section">
+                            <div class="section-label">Signature</div>
+                            <div class="form-group full">
+                                <label>Draw your signature below <span class="req">*</span></label>
+                                <div class="signature-area">
+                                    <div class="signature-toolbar">
+                                        <span class="sig-hint">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M12 20h9"/>
+                                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                                            </svg>
+                                            Use mouse or touch to sign
+                                        </span>
+                                        <button type="button" class="btn-clear-sig" @onclick="ClearSignature">? Clear</button>
+                                    </div>
+                                    <canvas id="signatureCanvas" width="700" height="130"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit -->
+                        <button type="submit" class="btn-submit" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner" style="width:15px;height:15px;border:2px solid rgba(255,255,255,0.35);border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;"></span>
+                                <span>Saving…</span>
+                            }
+                            else
+                            {
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                                <span>Register Participant</span>
+                            }
+                        </button>
+
+                    </EditForm>
+                </div>
+
+                <div class="card-footer">
+                    <span>BCPCH · Participant Registration System</span>
+                    <span class="footer-badge">Secure Form</span>
+                </div>
+            </div>
+        }
+
+    </main>
+</div>
+
+@code {
+    private Registrant model        = new();
+    private List<Event> activities  = new();
+    private Event? selectedActivity;
+    private string? successMessage;
+    private bool signatureError     = false;
+    private bool isSubmitting       = false;
+    private bool isDark             = true;
+    private bool formReady          = false;
+     private bool isReady            = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        activities = await db.Events
+        .Where(e => e.EndDate >= DateOnly.FromDateTime(DateTime.Today))
+        .Where(e => e.StartDate <= DateOnly.FromDateTime(DateTime.Today))
+        .OrderBy(e => e.StartDate)
+        .ToListAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            isReady = true;  // ? flip to true once circuit is connected
+
+            try
+            {
+                var saved = await JS.InvokeAsync<string?>("localStorage.getItem", "theme");
+                isDark = saved == "dark";
+            }
+            catch { }
+
+            StateHasChanged();
+        }
+
+        if (selectedActivity != null && !formReady)
+        {
+            try
+            {
+                await Task.Delay(150);
+                await JS.InvokeVoidAsync("signatureInterop.init", "signatureCanvas");
+                formReady = true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Signature init error: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task SelectActivity(Event activity)
+    {
+        selectedActivity = activity;
+        model            = new Registrant();
+        signatureError   = false;
+        successMessage   = null;
+        formReady        = false;
+        StateHasChanged(); // ? force re-render so the form view appears
+        
+        // give Blazor time to render the canvas before initializing
+        await Task.Delay(150);
+        try
+        {
+            await JS.InvokeVoidAsync("signatureInterop.init", "signatureCanvas");
+            formReady = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Signature init error: {ex.Message}");
+        }
+    }
+
+    private void ChangeActivity()
+    {
+        selectedActivity = null;
+        model            = new Registrant();
+        signatureError   = false;
+        successMessage   = null;
+        formReady        = false;
+    }
+
+    private async Task HandleSubmit()
+    {
+       if (selectedActivity == null) return;
+
+    bool empty = await JS.InvokeAsync<bool>("signatureInterop.isEmpty", "signatureCanvas");
+    if (empty) { signatureError = true; return; }
+
+    signatureError = false;
+    isSubmitting   = true;
+    StateHasChanged();
+
+    try
+    {
+        model.Signature = await JS.InvokeAsync<string>("signatureInterop.getDataUrl", "signatureCanvas");
+        model.EventId   = selectedActivity.Id;
+        model.CreatedAt = DateTime.UtcNow;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        db.Registrants.Add(model);
+        await db.SaveChangesAsync();
+
+        var name = $"{model.FirstName} {model.LastName}";
+        successMessage = $"{name} registered successfully for {selectedActivity.Name}.";
+
+        model      = new Registrant();
+        formReady  = false;
+        signatureError = false;
+
+        await JS.InvokeVoidAsync("signatureInterop.clear", "signatureCanvas");
+
+        await Task.Delay(4000);
+        successMessage = null;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Save error: {ex.Message}");
+    }
+    finally
+    {
+        isSubmitting = false;
+        StateHasChanged();
+    }
+    }
+
+    private async Task ClearSignature()
+        => await JS.InvokeVoidAsync("signatureInterop.clear", "signatureCanvas");
+
+    private async Task ToggleTheme()
+    {
+        isDark = !isDark;
+        var theme = isDark ? "dark" : "light";
+        await JS.InvokeVoidAsync("eval",
+            $"document.documentElement.setAttribute('data-theme','{theme}');" +
+            $"localStorage.setItem('theme','{theme}');");
+    }
+}

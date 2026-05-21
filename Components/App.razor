@@ -1,0 +1,65 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <title>Participant Registration</title>
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="admin.css" />      <!-- ← this was missing -->
+    
+    <link rel="stylesheet" href="PRS.styles.css" />
+    <link rel="stylesheet" href="dashboard.css" />
+    <!-- Prevent dark mode flash -->
+    <script>
+        (function() {
+            const saved = localStorage.getItem('theme') || 'Dark';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
+    <script>
+    function printHtml(html) {
+        const win = window.open('', '_bslank', 'width=900,height=600');
+        win.document.write(html);
+        win.document.close();
+        win.focus();
+        win.onload = function() {
+            win.print();
+            win.close();
+        };
+        }
+    </script>
+    <HeadOutlet />
+</head>
+<body>
+    <CascadingAuthenticationState>
+        <Routes @rendermode="InteractiveServer" />
+    </CascadingAuthenticationState>
+    <ReconnectModal />
+
+    <script src="_framework/blazor.web.js"></script>
+    <script src="js/signature.js"></script>
+    <script>
+        async function loginRequest(username, password) {
+        const response = await fetch('/auth/login', {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, password }),
+            credentials: 'include' // 🔥 REQUIRED
+            });
+
+            return response.ok;
+        }
+
+        async function logoutRequest() {
+        await fetch('/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+        });
+        }
+    </script>
+</body>
+</html>
